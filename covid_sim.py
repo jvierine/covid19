@@ -13,10 +13,14 @@ class population():
     def __init__(self,
                  N,
                  pop_density=1e4,
+                 run_name="Unnamed run",
                  p_infection=0.05,  # infection probability
                  L_infection=0.04,  # infection length
+                 p_infection_curfew=0.001, # curfue infection probability
+                 
                  p_death=0.01,      # probability of death (Cruise ship)
                  t_restrictions=7.0, # time when restrictions on human interactions are placedst_
+                 stop_air_travel=True,
                  t_return_to_normal=100.0, # return to business as usual
                  T_infected=7.0):
 
@@ -29,7 +33,8 @@ class population():
 
         self.t_return_to_normal = t_return_to_normal
         self.p_infection_orig = p_infection
-        self.L_infection_orig = L_infection
+        self.p_infection_curfew = p_infection_curfew
+        self.stop_air_travel=True
 
         # infection length
         self.L_infection=L_infection
@@ -63,6 +68,7 @@ class population():
         self.flights=True
         self.n_total_infected=n.sum(self.infected)
         self.t_restrictions=t_restrictions
+        self.run_name=run_name
 
 
     def timestep(self):
@@ -104,17 +110,15 @@ class population():
         self.n_dead.append(n.sum(self.dead))
         self.n_cumulative_infected.append(self.n_total_infected)
 
+        # switch between behaviours
         if self.t_now > self.t_restrictions and self.t_now < self.t_return_to_normal:
             print("implementing quarantine policy")
-            self.p_infection=0.0003
-            self.L_infection=0.04
-            self.flights=False
+            self.p_infection=self.p_infection_curfew
+            if self.stop_air_travel:
+                self.flights=False
         elif self.t_now > self.t_return_to_normal:
             self.p_infection = self.p_infection_orig
-            self.L_infection = self.L_infection_orig
-            self.flights=True
-            
-            
+            self.flights=True                        
 
         if self.flights:
             self.fly()
@@ -141,9 +145,9 @@ class population():
         plt.plot(self.pos_x[pidx],self.pos_y[pidx],".",color="blue")
         plt.plot(self.pos_x[i_idx],self.pos_y[i_idx],".",color="red")
         if self.t_now <= self.t_restrictions:
-            plt.title("No restrictions in place")
+            plt.title("%s\nNo restrictions in place"%(self.run_name))
         else:
-            plt.title("Interaction and travel restrictions in place")
+            plt.title("%s\nInteraction and travel restrictions in place"%(self.run_name))
             
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
@@ -162,9 +166,45 @@ class population():
         else:
             plt.pause(0.01)
 
-p=population(4e4)
-for i in range(150):
-    p.plot()
-    p.timestep()
-p.plot(show=True)
 
+def simulate_agressive_curfew():
+    p=population(4e4,p_infection_curfew=0.0001,
+                 run_name="Agressive curfew",
+                 p_infection=0.001,
+                 L_infection=0.1,
+                 t_restrictions=30.0,
+                 t_return_to_normal=60)
+    for i in range(150):
+        p.plot()
+        p.timestep()
+    p.plot(show=True)
+
+def simulate_intermediate_curfew():
+    p=population(4e4,
+                 p_infection_curfew=0.0003,
+                 run_name="Intermediate curfew",
+                 p_infection=0.001,
+                 L_infection=0.1,
+                 t_restrictions=30.0,
+                 stop_air_travel=True,
+                 t_return_to_normal=80)
+    for i in range(150):
+        p.plot()
+        p.timestep()
+    p.plot(show=True)
+
+def simulate_no_curfew():
+    p=population(4e4,p_infection_curfew=0.05,
+                 run_name="Intermediate curfew",
+                 p_infection=0.05,
+                 t_return_to_normal=50)
+    for i in range(150):
+        p.plot()
+        p.timestep()
+    p.plot(show=True)
+    
+
+
+if __name__ == "__main__":
+#    simulate_agressive_curfew()
+    simulate_intermediate_curfew()
