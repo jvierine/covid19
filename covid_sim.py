@@ -3,6 +3,11 @@
 import numpy as n
 import matplotlib.pyplot as plt
 
+# 
+# Death-rate: 1-2%, estimate cruise-ship 7/700, population bias towards old people
+# Flock-immunity: 
+# 
+# 
 class population():
     
     def __init__(self,
@@ -10,16 +15,21 @@ class population():
                  pop_density=1e4,
                  p_infection=0.05,  # infection probability
                  L_infection=0.04,  # infection length
-                 p_death=0.02,      # probability of death
-                 t_restrictions=7.0, # time when restrictions on human interactions are placed
+                 p_death=0.01,      # probability of death (Cruise ship)
+                 t_restrictions=7.0, # time when restrictions on human interactions are placedst_
+                 t_return_to_normal=100.0, # return to business as usual
                  T_infected=7.0):
 
         n.random.seed(0)
         
         self.N_pop = long(N)
-        self.p_infection=p_infection
-        self.t_infected=n.zeros(self.N_pop)
-        self.t_infected[:]=0.0
+        self.p_infection = p_infection
+        self.t_infected = n.zeros(self.N_pop)
+        self.t_infected[:] = 0.0
+
+        self.t_return_to_normal = t_return_to_normal
+        self.p_infection_orig = p_infection
+        self.L_infection_orig = L_infection
 
         # infection length
         self.L_infection=L_infection
@@ -94,11 +104,17 @@ class population():
         self.n_dead.append(n.sum(self.dead))
         self.n_cumulative_infected.append(self.n_total_infected)
 
-        if self.t_now > self.t_restrictions:
+        if self.t_now > self.t_restrictions and self.t_now < self.t_return_to_normal:
             print("implementing quarantine policy")
-            self.p_infection=0.02
-            self.L_infection=0.02
+            self.p_infection=0.0003
+            self.L_infection=0.04
             self.flights=False
+        elif self.t_now > self.t_return_to_normal:
+            self.p_infection = self.p_infection_orig
+            self.L_infection = self.L_infection_orig
+            self.flights=True
+            
+            
 
         if self.flights:
             self.fly()
@@ -132,11 +148,13 @@ class population():
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
         plt.subplot(212)
-        plt.plot(self.t_list,self.n_inf,color="red",label="infected")
-        plt.plot(self.t_list,self.n_cumulative_infected,color="brown",label="total infected")        
-        plt.plot(self.t_list,self.n_cured,color="green",label="cured")
-        plt.plot(self.t_list,self.n_dead,color="black",label="dead")
+        plt.plot(self.t_list,100.0*n.array(self.n_inf)/self.N_pop,color="red",label="infected")
+        plt.plot(self.t_list,100.0*n.array(self.n_cumulative_infected)/self.N_pop,color="brown",label="total infected")        
+        plt.plot(self.t_list,100.0*n.array(self.n_cured)/self.N_pop,color="green",label="cured")
+        plt.plot(self.t_list,100.0*n.array(self.n_dead)/self.N_pop,color="black",label="dead")
+        plt.ylabel("Percent of population")
         plt.axvline(self.t_restrictions,color="red")
+        plt.axvline(self.t_return_to_normal,color="green")        
         plt.legend()
         plt.xlabel("Time (days)")
         if show:
@@ -145,7 +163,7 @@ class population():
             plt.pause(0.01)
 
 p=population(4e4)
-for i in range(50):
+for i in range(150):
     p.plot()
     p.timestep()
 p.plot(show=True)
